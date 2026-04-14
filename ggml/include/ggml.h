@@ -428,6 +428,7 @@ extern "C" {
         // GGML_TYPE_IQ4_NL_8_8 = 38,
         GGML_TYPE_MXFP4   = 39, // MXFP4 (1 block)
         GGML_TYPE_NVFP4   = 40, // NVFP4 (4 blocks, E4M3 scale)
+        GGML_TYPE_Q1_0    = 41,
         GGML_TYPE_TURBO3_0 = 41, // TurboQuant 3-bit KV cache: 2-bit PolarQuant + 1-bit QJL
         GGML_TYPE_TURBO4_0 = 42, // TurboQuant 4-bit KV cache: 3-bit PolarQuant + 1-bit QJL
         GGML_TYPE_TURBO2_0 = 43, // TurboQuant 2-bit KV cache: 2-bit PolarQuant (no QJL)
@@ -435,7 +436,7 @@ extern "C" {
         GGML_TYPE_ISO3_0 = 45, // IsoQuant 3-bit KV cache: quaternion 4D rotation + 2-bit scalar + 1-bit QJL
         GGML_TYPE_PLANAR4_0 = 46, // PlanarQuant 4-bit KV cache: 2D Givens rotation + 3-bit scalar + 1-bit QJL
         GGML_TYPE_ISO4_0 = 47, // IsoQuant 4-bit KV cache: quaternion 4D rotation + 3-bit scalar + 1-bit QJL // IsoQuant 3-bit KV cache: quaternion 4D rotation + 2-bit scalar + 1-bit QJL // PlanarQuant 3-bit KV cache: 2D Givens rotation + 2-bit scalar + 1-bit QJL
-        GGML_TYPE_COUNT   = 48,
+        GGML_TYPE_COUNT   = 49,
     };
 
     // precision
@@ -472,6 +473,7 @@ extern "C" {
         GGML_FTYPE_MOSTLY_BF16    = 24, // except 1d tensors
         GGML_FTYPE_MOSTLY_MXFP4   = 25, // except 1d tensors
         GGML_FTYPE_MOSTLY_NVFP4   = 26, // except 1d tensors
+        GGML_FTYPE_MOSTLY_Q1_0    = 27, // except 1d tensors
     };
 
     // available tensor operations:
@@ -908,15 +910,17 @@ extern "C" {
             struct ggml_tensor  * b,
             struct ggml_tensor  * ids);
 
-    GGML_API struct ggml_tensor * ggml_add1(
+    GGML_DEPRECATED(GGML_API struct ggml_tensor * ggml_add1(
             struct ggml_context * ctx,
             struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+            struct ggml_tensor  * b),
+        "use ggml_add instead");
 
-    GGML_API struct ggml_tensor * ggml_add1_inplace(
+    GGML_DEPRECATED(GGML_API struct ggml_tensor * ggml_add1_inplace(
             struct ggml_context * ctx,
             struct ggml_tensor  * a,
-            struct ggml_tensor  * b);
+            struct ggml_tensor  * b),
+        "use ggml_add_inplace instead");
 
     // dst = a
     // view(dst, nb1, nb2, nb3, offset) += b

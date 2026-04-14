@@ -1110,7 +1110,7 @@ json oaicompat_chat_params_parse(
             reasoning_budget = json_value(body, "thinking_budget_tokens", -1);
         }
 
-        if (reasoning_budget >= 0 && !chat_params.thinking_end_tag.empty()) {
+        if (!chat_params.thinking_end_tag.empty()) {
             llama_params["reasoning_budget_tokens"] = reasoning_budget;
             llama_params["reasoning_budget_start_tag"] = chat_params.thinking_start_tag;
             llama_params["reasoning_budget_end_tag"] = chat_params.thinking_end_tag;
@@ -1428,6 +1428,60 @@ json convert_responses_to_chatcmpl(const json & response_body) {
     if (response_body.contains("max_output_tokens")) {
         chatcmpl_body.erase("max_output_tokens");
         chatcmpl_body["max_tokens"] = response_body["max_output_tokens"];
+    }
+
+    return chatcmpl_body;
+}
+
+json convert_transcriptions_to_chatcmpl(
+        const json & inp_body,
+        const std::map<std::string, raw_buffer> & in_files,
+        std::vector<raw_buffer> & out_files) {
+    // TODO @ngxson : this function may need to be improved in the future
+    // handle input files
+    out_files.clear();
+    auto it = in_files.find("file");
+    if (it != in_files.end()) {
+        out_files.push_back(it->second);
+    } else {
+        throw std::invalid_argument("No input file found for transcription");
+    }
+
+    // handle input data
+    std::string prompt = json_value(inp_body, "prompt", std::string());
+    std::string language = json_value(inp_body, "language", std::string());
+    std::string response_format = json_value(inp_body, "response_format", std::string("json"));
+    if (response_format != "json") {
+        throw std::invalid_argument("Only 'json' response_format is supported for transcription");
+    }
+    if (prompt.empty()) {
+        prompt = "Transcribe audio to text";
+    }
+    if (!language.empty()) {
+        prompt += string_format(" (language: %s)", language.c_str());
+    }
+    prompt += mtmd_default_marker();
+
+    json chatcmpl_body = inp_body; // copy all fields
+    chatcmpl_body["messages"] = json::array({
+        {
+            {"role", "user"},
+            {"content", prompt},
+        },
+    });
+
+    // because input from form-data, everything is string, we need to correct the types here
+    std::string stream = json_value(inp_body, "stream", std::string("false"));
+    chatcmpl_body["stream"] = stream == "true";
+
+    if (inp_body.contains("max_tokens")) {
+        std::string inp = inp_body["max_tokens"].get<std::string>();
+        chatcmpl_body["max_tokens"] = std::stoul(inp);
+    }
+
+    if (inp_body.contains("temperature")) {
+        std::string inp = inp_body["temperature"].get<std::string>();
+        chatcmpl_body["temperature"] = std::stof(inp);
     }
 
     return chatcmpl_body;
