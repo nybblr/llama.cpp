@@ -522,6 +522,10 @@ struct llama_model {
     // This allows EAGLE3 to use target model's embeddings without copying
     struct ggml_tensor * target_tok_embd = nullptr;
 
+    // dflash
+    struct ggml_tensor * dflash_hidden_norm = nullptr;
+    struct ggml_tensor * target_output = nullptr;  // reference to target model's lm_head
+
     std::vector<llama_layer> layers;
 
     //Dense linear projections for SentenceTransformers models like embeddinggemma

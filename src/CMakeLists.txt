@@ -59,6 +59,7 @@ add_library(llama
             models/deepseek2.cpp
             models/delta-net-base.cpp
             models/dots1.cpp
+            models/dflash.cpp
             models/dream.cpp
             models/eagle3.cpp
             models/ernie4-5-moe.cpp

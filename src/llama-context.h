@@ -118,6 +118,7 @@ struct llama_context {
 
     // TODO: tmp
     void set_eagle3(const llama_model * model);
+    void set_dflash(const llama_model * model);
 
     // process a single ubatch with a specific graph type
     // if memory_context is provided, it will be applied first to the context's memory
@@ -241,6 +242,12 @@ public:
     // EAGLE3: Set g_embeddings from encoder output for decoder input
     void set_eagle3_g_embeddings(const float * g_embd, int32_t n_embd, int32_t n_tokens);
 
+    // DFlash: Get pointer to target model features extracted for DFlash encoder
+    const float * get_dflash_target_features() const;
+
+    // DFlash: Set accumulated target_ctx from encoder output for decoder input
+    void set_dflash_accumulated_target_ctx(const float * data, int32_t n_embd, int32_t n_tokens);
+
     bool set_sampler(llama_seq_id seq_id, llama_sampler * sampler);
 
 private:
@@ -254,6 +261,9 @@ private:
 
     // EAGLE3: Extract intermediate layer features from target model
     void extract_eagle3_features(const llama_ubatch & ubatch);
+
+    // DFlash: Extract intermediate layer features from target model
+    void extract_dflash_features(const llama_ubatch & ubatch);
 
     // TODO: read/write lora adapters and cvec
     size_t state_write_data(llama_io_write_i & io);
@@ -277,6 +287,12 @@ private:
 
     mutable llama_eagle3 eagle3; // EAGLE3 draft model support - stores features from target model
                                  // mutable because it's modified during graph building (const function)
+
+    mutable llama_dflash dflash;
+
+    // temp fix: avoid DFlash encoder/decoder mis-detection. They share one model_dft,
+    // so shared model fields cannot safely identify the decoder (caused OOM).
+    bool dflash_decoder_ctx = false;
 
     std::unique_ptr<llama_memory_i> memory;
 

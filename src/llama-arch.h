@@ -135,6 +135,7 @@ enum llm_arch {
     LLM_ARCH_KIMI_LINEAR,
     LLM_ARCH_UNKNOWN,
     LLM_ARCH_EAGLE3,
+    LLM_ARCH_DFLASH,
 };
 
 enum llm_kv {
@@ -323,6 +324,10 @@ enum llm_kv {
     LLM_KV_EAGLE3_EXTRACT_LAYERS,
     LLM_KV_EAGLE3_TARGET_HIDDEN_SIZE,
     LLM_KV_EAGLE3_NORM_BEFORE_RESIDUAL,
+
+    LLM_KV_DFLASH_TARGET_LAYER_IDS,
+    LLM_KV_DFLASH_BLOCK_SIZE,
+    LLM_KV_DFLASH_MASK_TOKEN_ID,
 
     LLM_KV_SHORTCONV_L_CACHE,
 
@@ -551,6 +556,8 @@ enum llm_tensor {
     LLM_TENSOR_EAGLE3_FC,              // eagle3: feature fusion layer
     LLM_TENSOR_EAGLE3_HIDDEN_NORM,     // eagle3: additional normalization layer
     LLM_TENSOR_EAGLE3_D2T,             // eagle3: draft to target vocabulary mapping
+    LLM_TENSOR_DFLASH_FC,
+    LLM_TENSOR_DFLASH_HIDDEN_NORM,
 };
 
 enum llm_tensor_layer {

@@ -219,6 +219,11 @@ struct llama_hparams {
     // EAGLE3 draft model - apply hidden_norm before storing residual
     bool eagle3_norm_before_residual = false;
 
+    // DFlash draft model
+    std::array<int, 5> dflash_target_layer_ids = {};
+    uint32_t dflash_block_size     = 16;
+    uint32_t dflash_mask_token_id  = 0;
+
     // needed by encoder-decoder models (e.g. T5, FLAN-T5)
     // ref: https://github.com/ggml-org/llama.cpp/pull/8141
     llama_token dec_start_token_id = LLAMA_TOKEN_NULL;

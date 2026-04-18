@@ -87,11 +87,14 @@ int main(int argc, char ** argv) {
         if (params.speculative.eagle3) {
             llama_set_eagle3(ctx_tgt, model_dft.get());
         }
+        if (params.speculative.dflash) {
+            llama_set_dflash(ctx_tgt, model_dft.get());
+        }
     }
 
-    // Apply chat template for EAGLE3 if available which can increase the acceptance rate
+    // Apply chat template for EAGLE3 / DFlash if available which can increase the acceptance rate
     std::string prompt = params.prompt;
-    if (params.speculative.eagle3) {
+    if (params.speculative.eagle3 || params.speculative.dflash) {
         auto chat_templates = common_chat_templates_init(model_tgt, params.chat_template);
         if (common_chat_templates_was_explicit(chat_templates.get())) {
             std::vector<common_chat_msg> chat_msgs;
@@ -103,8 +106,15 @@ int main(int argc, char ** argv) {
             common_chat_templates_inputs inputs;
             inputs.messages = chat_msgs;
             inputs.add_generation_prompt = true;
+            // Disable thinking mode can improve accept rate
+            if (const char * nt = std::getenv("LLAMA_SPEC_NO_THINK"); nt && std::string(nt) != "0") {
+                // Qwen3 / 3.5
+                inputs.enable_thinking = false;
+                // gpt-oss
+                inputs.chat_template_kwargs["reasoning_effort"] = "\"low\"";
+            }
             prompt = common_chat_templates_apply(chat_templates.get(), inputs).prompt;
-            LOG_INF("%s: EAGLE3 chat template applied\n", __func__);
+            LOG_INF("%s: %s chat template applied\n", __func__, params.speculative.eagle3 ? "EAGLE3" : "DFlash");
         }
     }
 
@@ -152,7 +162,7 @@ int main(int argc, char ** argv) {
     int n_past;
 
     // TODO: simplify
-    if (params.speculative.eagle3) {
+    if (params.speculative.eagle3 || params.speculative.dflash) {
         // Target model decodes full prompt and sample first token and intermediate features are extracted
         llama_decode(ctx_tgt, llama_batch_get_one(inp.data(), inp.size()));
 
@@ -192,6 +202,21 @@ int main(int argc, char ** argv) {
 
     const auto t_dec_start = ggml_time_us();
 
+    // Hybrid targets (e.g. Qwen3.5) have recurrent layers that cannot be partially rolled back via seq_rm. 
+    // For them, snapshot the target state before verify and, on rejection, restore it and replay only the accepted tokens to ensure correctness 
+    // This is not efficient because the target model may run twice, but it is required in current llama.cpp design
+    const bool use_state_snapshot = params.speculative.dflash && llama_model_is_hybrid(model_tgt);
+    if (params.speculative.dflash) {
+        LOG_INF("%s: DFlash target=%s, using %s rollback path\n", __func__,
+                llama_model_is_hybrid(model_tgt) ? "hybrid" : "pure-attention",
+                use_state_snapshot ? "snapshot+restore" : "seq_rm");
+    }
+    std::vector<uint8_t> state_snap;
+    if (use_state_snapshot) {
+        const size_t sz = llama_state_seq_get_size(ctx_tgt, 0);
+        state_snap.resize(sz);
+    }
+
     while (true) {
         // optionally, generate draft tokens that can be appended to the target batch
         //
@@ -203,6 +228,17 @@ int main(int argc, char ** argv) {
         llama_tokens draft = common_speculative_draft(spec, params_spec, prompt_tgt, id_last);
 
         //LOG_DBG("draft: %s\n", string_from(ctx_dft, draft).c_str());
+
+        // snapshot target state for potential rollback (hybrid/recurrent targets only)
+        const int         n_past_before = n_past;
+        const llama_token id_last_saved = id_last;
+        if (use_state_snapshot) {
+            const size_t sz = llama_state_seq_get_size(ctx_tgt, 0);
+            if (sz > state_snap.size()) {
+                state_snap.resize(sz);
+            }
+            llama_state_seq_get_data(ctx_tgt, state_snap.data(), sz, 0);
+        }
 
         // always have a token to evaluate from before - id_last
         common_batch_clear(batch_tgt);
@@ -268,7 +304,21 @@ int main(int argc, char ** argv) {
 
         LOG_DBG("accepted %d/%d draft tokens, the last target token is: (%d)\n", (int) ids.size() - 1, (int) draft.size(), id_last);
 
-        {
+        const bool had_rejection = ids.size() < draft.size() + 1;
+
+        if (use_state_snapshot && had_rejection) {
+            // Restore snapshot and replay the committed prefix (id_last + accepted drafts) so target state exactly
+            LOG_DBG("DFlash rollback: restore target state and replay %zu tokens\n", ids.size());
+            llama_state_seq_set_data(ctx_tgt, state_snap.data(), state_snap.size(), 0);
+            common_batch_clear(batch_tgt);
+            common_batch_add(batch_tgt, id_last_saved, n_past_before, { 0 }, true);
+            for (size_t i = 0; i + 1 < ids.size(); ++i) {
+                common_batch_add(batch_tgt, ids[i], n_past_before + 1 + i, { 0 }, true);
+            }
+            if (batch_tgt.n_tokens > 0) {
+                llama_decode(ctx_tgt, batch_tgt);
+            }
+        } else {
             LOG_DBG("clear kv cache from any extra tokens, n_past = %d\n", n_past);
 
             llama_memory_seq_rm(llama_get_memory(ctx_tgt), 0, n_past, -1);
