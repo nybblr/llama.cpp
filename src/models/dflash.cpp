@@ -67,15 +67,15 @@ llm_build_dflash_decode::llm_build_dflash_decode(const llama_model & model, cons
 
         // Q from noise only
         ggml_tensor * Qcur = build_lora_mm(layer.wq, noise_norm);
-        if (layer.bq) { Qcur = ggml_add(ctx0, Qcur, layer.bq); }
+        if (layer.wq_b) { Qcur = ggml_add(ctx0, Qcur, layer.wq_b); }
         cb(Qcur, "Qcur", il);
 
         // K = concat(k_proj(target_ctx), k_proj(noise))
         ggml_tensor * K_tgt   = build_lora_mm(layer.wk, target_ctx);
         ggml_tensor * K_noise = build_lora_mm(layer.wk, noise_norm);
-        if (layer.bk) {
-            K_tgt   = ggml_add(ctx0, K_tgt,   layer.bk);
-            K_noise = ggml_add(ctx0, K_noise, layer.bk);
+        if (layer.wk_b) {
+            K_tgt   = ggml_add(ctx0, K_tgt,   layer.wk_b);
+            K_noise = ggml_add(ctx0, K_noise, layer.wk_b);
         }
         ggml_tensor * Kcur = ggml_concat(ctx0, K_tgt, K_noise, 1);
         cb(Kcur, "Kcur", il);
@@ -83,9 +83,9 @@ llm_build_dflash_decode::llm_build_dflash_decode(const llama_model & model, cons
         // V = concat(v_proj(target_ctx), v_proj(noise))
         ggml_tensor * V_tgt   = build_lora_mm(layer.wv, target_ctx);
         ggml_tensor * V_noise = build_lora_mm(layer.wv, noise_norm);
-        if (layer.bv) {
-            V_tgt   = ggml_add(ctx0, V_tgt,   layer.bv);
-            V_noise = ggml_add(ctx0, V_noise, layer.bv);
+        if (layer.wv_b) {
+            V_tgt   = ggml_add(ctx0, V_tgt,   layer.wv_b);
+            V_noise = ggml_add(ctx0, V_noise, layer.wv_b);
         }
         ggml_tensor * Vcur = ggml_concat(ctx0, V_tgt, V_noise, 1);
         cb(Vcur, "Vcur", il);
@@ -123,7 +123,7 @@ llm_build_dflash_decode::llm_build_dflash_decode(const llama_model & model, cons
         cb(cur, "kqv_out", il);
 
         cur = build_lora_mm(layer.wo, cur);
-        if (layer.bo) { cur = ggml_add(ctx0, cur, layer.bo); }
+        if (layer.wo_b) { cur = ggml_add(ctx0, cur, layer.wo_b); }
         cur = ggml_add(ctx0, cur, inpL);
         cb(cur, "attn_res", il);
 
