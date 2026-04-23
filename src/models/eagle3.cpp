@@ -132,7 +132,7 @@ llm_build_eagle3_decode::llm_build_eagle3_decode(const llama_model & model, cons
         cb(Kcur, "Kcur_rope", il);
 
         cur = build_attn(inp_attn,
-                model.layers[il].wo, NULL,
+                model.layers[il].wo, NULL, model.layers[il].wo_s,
                 Qcur, Kcur, Vcur, nullptr, nullptr, nullptr, kq_scale, il);
 
         if (inp_out_ids) {
