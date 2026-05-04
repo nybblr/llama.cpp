@@ -33,13 +33,13 @@ logger = logging.getLogger(__name__)
 # ==============================================================================
 
 # Path to the base GGUF (quantized model without MTP layers)
-BASE_GGUF_PATH = "./Qwen3.6-31B-A3B-Q4_K_M.gguf"
+BASE_GGUF_PATH = "/root/.cache/huggingface/hub/models--unsloth--Qwen3.6-35B-A3B-GGUF/blobs/ac0e2c1189e055faa36eff361580e79c5bd6f8e76bffb4ce547f167d53e31a61"
 
 # Path to the source GGUF (with MTP layers, e.g., Q8_0)
-MTP_SOURCE_GGUF_PATH = "./Qwen3.6-31B-A3B-Q8_0.gguf"
+MTP_SOURCE_GGUF_PATH = "/root/.cache/huggingface/hub/models--am17an--Qwen3.6-35BA3B-MTP-GGUF/blobs/b6d91455942ed408b45318af7312a9fe02a6e48564bf303735770e3fd3523d4f"
 
 # Output path for the merged GGUF
-OUTPUT_GGUF_PATH = "./Qwen3.6-31B-A3B-Q4_K_M-MTP.gguf"
+OUTPUT_GGUF_PATH = "/root/.cache/huggingface/hub/Qwen3.6-35B-A3B-MTP-Q4_K_M.gguf"
 
 # The block index of the MTP block in the source GGUF.
 # The source has 41 blocks (0..40); blk.40 is the MTP block.
@@ -182,8 +182,8 @@ def main() -> None:
     skip_keys = {
         block_count_key,
         nextn_key,
-        "tensor_count",
-        "kv_count",
+        "GGUF.tensor_count",
+        "GGUF.kv_count",
     }
 
     for key, field in base_reader.fields.items():
@@ -192,7 +192,7 @@ def main() -> None:
         val = field.contents()
         vtype = field.types[0]
         writer.add_key_value(key, val, vtype)
-        logger.info(f"  [META] {key} = {val}")
+        logger.info(f"  [META] {key} = ")
 
     # -------------------------------------------------------------------------
     # Step 6: Override metadata with source values
