@@ -849,6 +849,18 @@ private:
             cparams_mtp.n_ctx     = llama_n_ctx_seq(ctx);
             cparams_mtp.n_seq_max = 1;
             cparams_mtp.n_rs_seq = 0;
+            if (const char * mtp_n_ubatch = std::getenv("LLAMA_UPSTREAM_MTP_N_UBATCH")) {
+                cparams_mtp.n_ubatch = std::stoi(mtp_n_ubatch);
+                if (cparams_mtp.n_batch < cparams_mtp.n_ubatch) {
+                    cparams_mtp.n_batch = cparams_mtp.n_ubatch;
+                }
+                SRV_INF("MTP context n_ubatch override: %u (n_batch=%u)\n",
+                        cparams_mtp.n_ubatch, cparams_mtp.n_batch);
+            }
+            if (const char * mtp_n_batch = std::getenv("LLAMA_UPSTREAM_MTP_N_BATCH")) {
+                cparams_mtp.n_batch = std::stoi(mtp_n_batch);
+                SRV_INF("MTP context n_batch override: %u\n", cparams_mtp.n_batch);
+            }
 
             params_base.speculative.mtp.model   = model_mtp.get();
             params_base.speculative.mtp.cparams = cparams_mtp;
